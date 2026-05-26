@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,10 +66,27 @@ private sealed class QStep {
 fun QuestionScreen(viewModel: GameViewModel, onComplete: () -> Unit) {
     val game by viewModel.game.collectAsStateWithLifecycle()
     val state = game ?: return
-    val question = state.currentQuestion ?: return
-    val selected = state.selectedPlayer() ?: return
-    val spinner = state.playerById(state.lastSpinnerId) ?: state.players.first()
     val phrase by viewModel.phrase.collectAsStateWithLifecycle()
+
+    var activeQuestion by remember { mutableStateOf(state.currentQuestion) }
+    var activeSelected by remember { mutableStateOf(state.selectedPlayer()) }
+    var activeSpinner by remember {
+        mutableStateOf(state.playerById(state.lastSpinnerId) ?: state.players.firstOrNull())
+    }
+
+    LaunchedEffect(state.currentQuestion, state.selectedPlayerId, state.lastSpinnerId) {
+        val question = state.currentQuestion
+        val selected = state.selectedPlayer()
+        if (question != null && selected != null) {
+            activeQuestion = question
+            activeSelected = selected
+            activeSpinner = state.playerById(state.lastSpinnerId) ?: state.players.firstOrNull()
+        }
+    }
+
+    val question = activeQuestion ?: return
+    val selected = activeSelected ?: return
+    val spinner = activeSpinner ?: selected
 
     var step by remember(question) { mutableStateOf<QStep>(QStep.Question) }
 
