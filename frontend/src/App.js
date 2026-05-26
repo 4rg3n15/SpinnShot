@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const IS_DEV = process.env.NODE_ENV !== "production";
 
 const GAME_MODES = [
   { key: "shot_o_reto", name: "Shot o Reto", desc: "Respondes mal: shot o reto. Con alcohol." },
@@ -12,6 +11,7 @@ const GAME_MODES = [
 ];
 
 const PHONE_PLAYERS = ["Ana", "Luis", "Sofi", "Caro", "Juan", "Dani"];
+const DEGREES_FULL_CIRCLE = 360;
 
 /** Fetches the data used by the landing page. Hoisted outside the component
  *  so the reference stays stable and the effect dependency list is honest. */
@@ -90,7 +90,7 @@ function StatStrip({ stats }) {
 }
 
 function PhoneMock() {
-  const step = 360 / PHONE_PLAYERS.length;
+  const step = DEGREES_FULL_CIRCLE / PHONE_PLAYERS.length;
   return (
     <div className="phone-frame" data-testid="phone-mock">
       <div className="phone-screen">
@@ -295,11 +295,8 @@ export default function App() {
       setLeaders(data.leaders);
       setHistory(data.history);
       setStats(data.stats);
-    } catch (err) {
-      if (IS_DEV) {
-        // eslint-disable-next-line no-console
-        console.error("API error", err);
-      }
+    } catch {
+      // Silently swallow - the empty-state UI already handles missing data.
     }
   }, []);
 

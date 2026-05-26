@@ -140,27 +140,41 @@ class TestGamesAndLeaderboard:
                 # iso8601 has 'T'
                 assert "T" in g["played_at"]
 
-    def test_leaderboard_aggregation(self, client):
+    # ---- Leaderboard aggregation, split per player to keep each test simple ----
+    # Expected totals after the two games inserted in test_create_two_games:
+    #   TEST_Ana : 2 games, points 7+3=10, shots 1+0=1, wins 1
+    #   TEST_Luis: 2 games, points 4+8=12, shots 2+0=2, wins 1
+    #   TEST_Sofi: 2 games, 0 wins
+    EXPECTED_LEADERBOARD = {
+        "TEST_Ana": {"games": 2, "points": 10, "shots": 1, "wins": 1},
+        "TEST_Luis": {"games": 2, "points": 12, "shots": 2, "wins": 1},
+        "TEST_Sofi": {"games": 2, "wins": 0},
+    }
+
+    def _get_leaderboard_rows(self, client):
         r = client.get(f"{API}/leaderboard", timeout=15)
         assert r.status_code == 200
-        rows = {row["name"]: row for row in r.json()}
-        # TEST_Ana: 2 games, points 7+3=10, shots 1+0=1, wins 1
-        assert "TEST_Ana" in rows, f"TEST_Ana not in leaderboard: {list(rows)}"
-        ana = rows["TEST_Ana"]
-        assert ana["games"] == 2
-        assert ana["points"] == 10
-        assert ana["shots"] == 1
-        assert ana["wins"] == 1
-        # TEST_Luis: 2 games, points 4+8=12, shots 2+0=2, wins 1
-        luis = rows["TEST_Luis"]
-        assert luis["games"] == 2
-        assert luis["points"] == 12
-        assert luis["shots"] == 2
-        assert luis["wins"] == 1
-        # TEST_Sofi: 2 games, 0 wins
-        sofi = rows["TEST_Sofi"]
-        assert sofi["games"] == 2
-        assert sofi["wins"] == 0
+        return {row["name"]: row for row in r.json()}
+
+    def _assert_player_totals(self, rows, name, expected):
+        assert name in rows, f"{name} not in leaderboard: {list(rows)}"
+        actual = rows[name]
+        for key, value in expected.items():
+            assert actual[key] == value, (
+                f"{name}.{key} = {actual[key]}, expected {value}"
+            )
+
+    def test_leaderboard_contains_ana(self, client):
+        rows = self._get_leaderboard_rows(client)
+        self._assert_player_totals(rows, "TEST_Ana", self.EXPECTED_LEADERBOARD["TEST_Ana"])
+
+    def test_leaderboard_contains_luis(self, client):
+        rows = self._get_leaderboard_rows(client)
+        self._assert_player_totals(rows, "TEST_Luis", self.EXPECTED_LEADERBOARD["TEST_Luis"])
+
+    def test_leaderboard_contains_sofi(self, client):
+        rows = self._get_leaderboard_rows(client)
+        self._assert_player_totals(rows, "TEST_Sofi", self.EXPECTED_LEADERBOARD["TEST_Sofi"])
 
     def test_delete_game_invalid_id_returns_400(self, client):
         r = client.delete(f"{API}/games/not-a-real-id", timeout=15)
