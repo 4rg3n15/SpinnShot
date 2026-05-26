@@ -1,14 +1,40 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const IS_DEV = process.env.NODE_ENV !== "production";
 
 const GAME_MODES = [
   { key: "shot_o_reto", name: "Shot o Reto", desc: "Respondes mal: shot o reto. Con alcohol." },
   { key: "verdad_o_reto", name: "Verdad o Reto", desc: "Sin alcohol. Cumple o paga puntos." },
   { key: "verdad_o_shot", name: "Verdad o Shot", desc: "Verdad o trago al fallar." },
 ];
+
+const PHONE_PLAYERS = ["Ana", "Luis", "Sofi", "Caro", "Juan", "Dani"];
+
+/** Fetches the data used by the landing page. Hoisted outside the component
+ *  so the reference stays stable and the effect dependency list is honest. */
+async function fetchLandingData() {
+  const [lb, hist, cats] = await Promise.all([
+    axios.get(`${API}/leaderboard`),
+    axios.get(`${API}/games?limit=12`),
+    axios.get(`${API}/categories`),
+  ]);
+  const games = hist.data || [];
+  const players = new Set();
+  games.forEach((g) => g.players.forEach((p) => players.add(p.name)));
+  return {
+    leaders: lb.data || [],
+    history: games,
+    stats: {
+      players: players.size,
+      games: games.length,
+      categories: (cats.data || []).length,
+      questions: "50+",
+    },
+  };
+}
 
 function Header() {
   return (
@@ -29,58 +55,76 @@ function Header() {
   );
 }
 
+function HeroCopy() {
+  return (
+    <>
+      <p className="kicker">KOTLIN · JETPACK COMPOSE · ESTÉTICA NOCTURNA</p>
+      <h1>
+        Gira la ruleta.<br/>
+        Reta a tus amigos.<br/>
+        <span className="hl">Sirve los shots.</span>
+      </h1>
+      <p className="lead">
+        SpinnShot es una app móvil Android para fiestas: ruleta de jugadores,
+        preguntas de cultura general por categorías, tres modos de juego
+        con puntos y shots, ranking final y un menú para editar la partida
+        sobre la marcha.
+      </p>
+      <div className="cta-row">
+        <a className="btn-primary" href="#build" data-testid="cta-build">Cómo correrlo</a>
+        <a className="btn-ghost" href="#modes" data-testid="cta-modes">Ver modos</a>
+      </div>
+    </>
+  );
+}
+
+function StatStrip({ stats }) {
+  return (
+    <div className="stat-strip" data-testid="stat-strip">
+      <div><strong>{stats.players ?? "—"}</strong><span>jugadores en historial</span></div>
+      <div><strong>{stats.games ?? "—"}</strong><span>partidas guardadas</span></div>
+      <div><strong>{stats.categories ?? "9"}</strong><span>categorías</span></div>
+      <div><strong>{stats.questions ?? "50+"}</strong><span>preguntas</span></div>
+    </div>
+  );
+}
+
+function PhoneMock() {
+  const step = 360 / PHONE_PLAYERS.length;
+  return (
+    <div className="phone-frame" data-testid="phone-mock">
+      <div className="phone-screen">
+        <div className="phone-top">SpinnShot</div>
+        <div className="roulette">
+          <div className="roulette-disk">
+            {PHONE_PLAYERS.map((name, i) => (
+              <span key={name} style={{ transform: `rotate(${i * step}deg) translateY(-78px)` }}>{name}</span>
+            ))}
+          </div>
+          <div className="roulette-pin" />
+        </div>
+        <button className="phone-btn">GIRAR</button>
+        <p className="phone-meta">Ronda 3 · Turno: Ana · Cine</p>
+        <div className="phone-score">
+          <span>Ana <em>+4</em></span>
+          <span>Luis <em>+2</em></span>
+          <span>Sofi <em>+1</em></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Hero({ stats }) {
   return (
     <section className="hero" data-testid="hero">
       <div className="hero-grid">
         <div className="hero-left">
-          <p className="kicker">KOTLIN · JETPACK COMPOSE · ESTÉTICA NOCTURNA</p>
-          <h1>
-            Gira la ruleta.<br/>
-            Reta a tus amigos.<br/>
-            <span className="hl">Sirve los shots.</span>
-          </h1>
-          <p className="lead">
-            SpinnShot es una app móvil Android para fiestas: ruleta de jugadores,
-            preguntas de cultura general por categorías, tres modos de juego
-            con puntos y shots, ranking final y un menú para editar la partida
-            sobre la marcha.
-          </p>
-          <div className="cta-row">
-            <a className="btn-primary" href="#build" data-testid="cta-build">Cómo correrlo</a>
-            <a className="btn-ghost" href="#modes" data-testid="cta-modes">Ver modos</a>
-          </div>
-          <div className="stat-strip" data-testid="stat-strip">
-            <div><strong>{stats.players ?? "—"}</strong><span>jugadores en historial</span></div>
-            <div><strong>{stats.games ?? "—"}</strong><span>partidas guardadas</span></div>
-            <div><strong>{stats.categories ?? "9"}</strong><span>categorías</span></div>
-            <div><strong>{stats.questions ?? "50+"}</strong><span>preguntas</span></div>
-          </div>
+          <HeroCopy />
+          <StatStrip stats={stats} />
         </div>
         <div className="hero-right">
-          <div className="phone-frame" data-testid="phone-mock">
-            <div className="phone-screen">
-              <div className="phone-top">SpinnShot</div>
-              <div className="roulette">
-                <div className="roulette-disk">
-                  <span style={{transform:"rotate(0deg) translateY(-78px)"}}>Ana</span>
-                  <span style={{transform:"rotate(60deg) translateY(-78px)"}}>Luis</span>
-                  <span style={{transform:"rotate(120deg) translateY(-78px)"}}>Sofi</span>
-                  <span style={{transform:"rotate(180deg) translateY(-78px)"}}>Caro</span>
-                  <span style={{transform:"rotate(240deg) translateY(-78px)"}}>Juan</span>
-                  <span style={{transform:"rotate(300deg) translateY(-78px)"}}>Dani</span>
-                </div>
-                <div className="roulette-pin" />
-              </div>
-              <button className="phone-btn">GIRAR</button>
-              <p className="phone-meta">Ronda 3 · Turno: Ana · Cine</p>
-              <div className="phone-score">
-                <span>Ana <em>+4</em></span>
-                <span>Luis <em>+2</em></span>
-                <span>Sofi <em>+1</em></span>
-              </div>
-            </div>
-          </div>
+          <PhoneMock />
         </div>
       </div>
     </section>
@@ -245,29 +289,23 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState({});
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [lb, hist, cats] = await Promise.all([
-          axios.get(`${API}/leaderboard`),
-          axios.get(`${API}/games?limit=12`),
-          axios.get(`${API}/categories`),
-        ]);
-        setLeaders(lb.data || []);
-        setHistory(hist.data || []);
-        const players = new Set();
-        (hist.data || []).forEach((g) => g.players.forEach((p) => players.add(p.name)));
-        setStats({
-          players: players.size,
-          games: (hist.data || []).length,
-          categories: (cats.data || []).length,
-          questions: "50+",
-        });
-      } catch (err) {
+  const loadData = useCallback(async () => {
+    try {
+      const data = await fetchLandingData();
+      setLeaders(data.leaders);
+      setHistory(data.history);
+      setStats(data.stats);
+    } catch (err) {
+      if (IS_DEV) {
+        // eslint-disable-next-line no-console
         console.error("API error", err);
       }
-    })();
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   return (
     <div className="app" data-testid="app-root">
