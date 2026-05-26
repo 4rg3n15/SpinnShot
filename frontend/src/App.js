@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
@@ -284,30 +284,54 @@ function BuildInstructions() {
   );
 }
 
+function ErrorBanner({ message, onRetry }) {
+  return (
+    <div className="error-banner" role="alert" data-testid="error-banner">
+      <div>
+        <strong>Error de conexión</strong>
+        <p>{message}</p>
+      </div>
+      <button type="button" onClick={onRetry} data-testid="error-retry">
+        Reintentar
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const [leaders, setLeaders] = useState([]);
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState({});
-
-  const loadData = useCallback(async () => {
-    try {
-      const data = await fetchLandingData();
-      setLeaders(data.leaders);
-      setHistory(data.history);
-      setStats(data.stats);
-    } catch {
-      // Silently swallow - the empty-state UI already handles missing data.
-    }
-  }, []);
+  const [error, setError] = useState(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let cancelled = false;
+    fetchLandingData()
+      .then((data) => {
+        if (cancelled) return;
+        setLeaders(data.leaders);
+        setHistory(data.history);
+        setStats(data.stats);
+        setError(null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const detail = err?.message || "No pudimos contactar a SpinnShot Cloud.";
+        setError(detail);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadTick]);
 
   return (
     <div className="app" data-testid="app-root">
       <Header />
       <main>
+        {error && (
+          <ErrorBanner message={error} onRetry={() => setReloadTick((n) => n + 1)} />
+        )}
         <Hero stats={stats} />
         <About />
         <Modes />

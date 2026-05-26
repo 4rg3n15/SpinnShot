@@ -198,6 +198,26 @@
   border-top: 1px solid var(--border); letter-spacing: 0.08em;
 }
 
+/* Error banner */
+.error-banner {
+  margin: 20px 36px 0;
+  padding: 14px 20px;
+  border-radius: 14px;
+  background: rgba(232, 121, 249, 0.08);
+  border: 1px solid var(--neon-fuchsia);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  color: var(--text-0);
+}
+.error-banner strong { color: var(--neon-fuchsia); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
+.error-banner p { color: var(--text-1); font-size: 13px; margin-top: 4px; }
+.error-banner button {
+  padding: 8px 18px; border-radius: 999px;
+  background: var(--neon-fuchsia); color: #07000f;
+  border: none; font-weight: 700; cursor: pointer;
+  transition: transform .15s;
+}
+.error-banner button:hover { transform: translateY(-1px); }
+
 /* Responsive */
 @media (max-width: 900px) {
   .hero-grid { grid-template-columns: 1fr; gap: 40px; }
