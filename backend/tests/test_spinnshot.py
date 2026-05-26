@@ -107,6 +107,22 @@ class TestQuestions:
         r_todas = client.get(f"{API}/questions", params={"categoria": "todas"}, timeout=15).json()
         assert len(r_todas) == len(r_all)
 
+    def test_questions_cache_is_consistent_across_calls(self, client):
+        """Two consecutive requests must return identical lists when CSV is unchanged."""
+        first = client.get(f"{API}/questions", timeout=15).json()
+        second = client.get(f"{API}/questions", timeout=15).json()
+        assert first == second
+
+    def test_questions_reload_endpoint(self, client):
+        r = client.post(f"{API}/questions/reload", timeout=15)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["count"] >= 50
+        # Cached count must equal what /api/questions returns
+        qs = client.get(f"{API}/questions", timeout=15).json()
+        assert body["count"] == len(qs)
+
 
 # ---------- /api/games + /api/leaderboard ----------
 class TestGamesAndLeaderboard:

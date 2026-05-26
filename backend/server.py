@@ -7,8 +7,10 @@ Provides endpoints for:
 from __future__ import annotations
 
 import csv
+import logging
 import os
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
@@ -29,15 +31,11 @@ DB_NAME = os.environ["DB_NAME"]
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
-app = FastAPI(title="SpinnShot API", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+logger = logging.getLogger("spinnshot")
+logger.setLevel(logging.INFO)
+# Pipe through uvicorn's stream so the startup log shows up next to access logs.
+for _h in logging.getLogger("uvicorn").handlers:
+    logger.addHandler(_h)
 
 
 # ---------- Mongo helpers ----------
@@ -86,8 +84,11 @@ class GameRecord(BaseModel):
 # ---------- CSV loader ----------
 QUESTIONS_CSV = ROOT / "questions.csv"
 
+# Module-level cache populated at startup; reloadable via POST /api/questions/reload.
+_questions_cache: list[Question] = []
 
-def _load_csv_questions() -> list[Question]:
+
+def _read_csv_from_disk() -> list[Question]:
     if not QUESTIONS_CSV.exists():
         return []
     out: list[Question] = []
@@ -105,6 +106,47 @@ def _load_csv_questions() -> list[Question]:
             except KeyError:
                 continue
     return out
+
+
+def _load_csv_questions() -> list[Question]:
+    """Returns the cached questions list.
+
+    The cache is populated once at startup by [lifespan]. Calling this before
+    startup completes (e.g. in synchronous tests) transparently lazy-loads
+    from disk so behaviour stays correct.
+    """
+    if not _questions_cache:
+        _refresh_cache()
+    return _questions_cache
+
+
+def _refresh_cache() -> int:
+    """Re-read the CSV from disk and replace the in-memory cache.
+
+    Returns the number of questions loaded.
+    """
+    global _questions_cache
+    _questions_cache = _read_csv_from_disk()
+    return len(_questions_cache)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    count = _refresh_cache()
+    logger.info("SpinnShot: loaded %d questions into memory cache", count)
+    yield
+    # No teardown necessary; Motor client cleans up at process exit.
+
+
+app = FastAPI(title="SpinnShot API", version="1.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---------- Routes ----------
@@ -126,6 +168,16 @@ async def list_questions(
 @app.get("/api/categories", response_model=list[str])
 async def list_categories() -> list[str]:
     return sorted({q.categoria for q in _load_csv_questions()})
+
+
+@app.post("/api/questions/reload")
+async def reload_questions() -> dict[str, int | str]:
+    """Force a re-read of `questions.csv` into the in-memory cache.
+
+    Useful in development after editing the CSV without restarting the server.
+    """
+    count = _refresh_cache()
+    return {"status": "ok", "count": count}
 
 
 @app.post("/api/games", response_model=dict)
