@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -86,7 +87,7 @@ fun NeonGradientButton(
                 if (enabled) com.example.spinnshot.ui.theme.neonButtonGradient()
                 else androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(BorderDim, BorderDim))
             )
-            .let { if (testTag != null) it.testTagId(testTag) else it }
+            .let { if (testTag != null) it.testTag(testTag) else it }
     ) {
         Text(
             text = text.uppercase(),
@@ -111,7 +112,7 @@ fun GhostButton(
         shape = CircleShape,
         modifier = modifier
             .heightIn(min = 52.dp)
-            .let { if (testTag != null) it.testTagId(testTag) else it }
+            .let { if (testTag != null) it.testTag(testTag) else it }
     ) {
         Text(
             text = text,
@@ -234,10 +235,3 @@ fun CenteredFinePrint(text: String) {
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
     )
 }
-
-private fun Modifier.testTagId(tag: String): Modifier =
-    this.then(
-        androidx.compose.ui.semantics.semantics {
-            this.testTag = tag
-        }
-    )

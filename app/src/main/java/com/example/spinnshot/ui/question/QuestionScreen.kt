@@ -26,8 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -118,7 +118,7 @@ fun QuestionScreen(viewModel: GameViewModel, onComplete: () -> Unit) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            when (val s = step) {
+            when (step) {
                 QStep.Question -> NeonGradientButton(
                     text = "Revelar",
                     onClick = { step = QStep.Revealed },
