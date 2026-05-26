@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useState } from "react";
+import useLandingData from "./hooks/useLandingData";
 import "./App.css";
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const GAME_MODES = [
   { key: "shot_o_reto", name: "Shot o Reto", desc: "Respondes mal: shot o reto. Con alcohol." },
@@ -11,30 +9,7 @@ const GAME_MODES = [
 ];
 
 const PHONE_PLAYERS = ["Ana", "Luis", "Sofi", "Caro", "Juan", "Dani"];
-const DEGREES_FULL_CIRCLE = 360;
-
-/** Fetches the data used by the landing page. Hoisted outside the component
- *  so the reference stays stable and the effect dependency list is honest. */
-async function fetchLandingData() {
-  const [lb, hist, cats] = await Promise.all([
-    axios.get(`${API}/leaderboard`),
-    axios.get(`${API}/games?limit=12`),
-    axios.get(`${API}/categories`),
-  ]);
-  const games = hist.data || [];
-  const players = new Set();
-  games.forEach((g) => g.players.forEach((p) => players.add(p.name)));
-  return {
-    leaders: lb.data || [],
-    history: games,
-    stats: {
-      players: players.size,
-      games: games.length,
-      categories: (cats.data || []).length,
-      questions: "50+",
-    },
-  };
-}
+const FULL_ROTATION_DEGREES = 360;
 
 function Header() {
   return (
@@ -90,7 +65,7 @@ function StatStrip({ stats }) {
 }
 
 function PhoneMock() {
-  const step = DEGREES_FULL_CIRCLE / PHONE_PLAYERS.length;
+  const step = FULL_ROTATION_DEGREES / PHONE_PLAYERS.length;
   return (
     <div className="phone-frame" data-testid="phone-mock">
       <div className="phone-screen">
@@ -299,39 +274,15 @@ function ErrorBanner({ message, onRetry }) {
 }
 
 export default function App() {
-  const [leaders, setLeaders] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [stats, setStats] = useState({});
-  const [error, setError] = useState(null);
   const [reloadTick, setReloadTick] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchLandingData()
-      .then((data) => {
-        if (cancelled) return;
-        setLeaders(data.leaders);
-        setHistory(data.history);
-        setStats(data.stats);
-        setError(null);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        const detail = err?.message || "No pudimos contactar a SpinnShot Cloud.";
-        setError(detail);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadTick]);
+  const { leaders, history, stats, error } = useLandingData(reloadTick);
+  const retry = () => setReloadTick((n) => n + 1);
 
   return (
     <div className="app" data-testid="app-root">
       <Header />
       <main>
-        {error && (
-          <ErrorBanner message={error} onRetry={() => setReloadTick((n) => n + 1)} />
-        )}
+        {error && <ErrorBanner message={error} onRetry={retry} />}
         <Hero stats={stats} />
         <About />
         <Modes />
